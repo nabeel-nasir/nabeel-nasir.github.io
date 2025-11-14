@@ -1,0 +1,580 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CS 32 - C Tutorial</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="page-header">
+      <div class="header-content">
+        <div class="course-badge">CS 32</div>
+        <h1>C Tutorial: Intro to Compilation, Linking, and Memory </h1>
+        <p class="author">by Surya Gunukula</p>
+      </div>
+    </header>
+
+    <nav class="breadcrumb">
+      <div class="container">
+        <a href="#">Back to Resources</a>
+      </div>
+    </nav>
+
+    <main class="container">
+      <aside class="table-of-contents">
+        <h3>Contents</h3>
+        <nav>
+          <ul>
+            <li><a href="#description">Description</a></li>
+            <li><a href="#compilation">How C Compilation Works</a></li>
+            <li><a href="#multiple-files">Multiple Object Files</a></li>
+            <li><a href="#libraries">Static Libraries</a></li>
+            <li><a href="#memory">Memory Organization</a></li>
+            <li><a href="#stack-danger">Returning Stack Addresses</a></li>
+            <li><a href="#heap-correct">Returning Heap Memory</a></li>
+            <li><a href="#parameters">Function Parameters</a></li>
+            <li><a href="#memory-layout">Memory Layout Visualization</a></li>
+            <li><a href="#takeaways">Key Takeaways</a></li>
+          </ul>
+        </nav>
+      </aside>
+
+      <div class="main-content">
+      <section id="description" class="intro-section">
+        <h2>Description</h2>
+        <p>This is a comprehensive guide to understanding how C programs are built, linked, and executed. We cover compilation workflows, makefiles, static libraries, and memory organization (stack, heap, globals). Each topic includes detailed examples with outputs and step-by-step explanations to help you master these fundamental concepts.</p>
+      </section>
+
+      <section id="compilation">
+        <h2>How Does C Compilation Work?</h2>
+        <p>C is a file-oriented language where code in the same file is related, and external code is treated as libraries that can be linked. Understanding how the compiler transforms your source code into an executable is crucial for debugging and building larger projects.</p>
+
+        <h3>Example 1: Basic Program with External Function</h3>
+        <p>Let's start with a simple program that calls an external function:</p>
+
+        <div class="code-block">
+          <div class="code-label">p1.c</div>
+          <pre><code class="language-c">#include &lt;unistd.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;stdio.h&gt;
+
+#include "int_add.h"
+
+int main(int argc, char *argv[])
+{
+    int first_num = 10;
+    int second_num = 20;
+
+    printf("the sum of %d and %d is %d\n",
+            first_num,
+            second_num,
+            IntegerAdd(first_num, second_num));
+
+    return 0;
+}</code></pre>
+        </div>
+
+        <div class="code-block">
+          <div class="code-label">int_add.c</div>
+          <pre><code class="language-c">#include &lt;unistd.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;stdio.h&gt;
+
+int IntegerAdd(int a, int b)
+{
+    return a + b;
+}</code></pre>
+        </div>
+
+        <div class="code-block">
+          <div class="code-label">Makefile</div>
+          <pre><code class="language-makefile">CC = gcc
+CFLAGS = -g
+
+int_add.o: int_add.c int_add.h
+	$(CC) $(CFLAGS) -c int_add.c
+
+p1: p1.c int_add.o int_add.h
+	$(CC) $(CFLAGS) -o p1 p1.c int_add.o</code></pre>
+        </div>
+
+        <div class="output-block">
+          <div class="output-label">Output:</div>
+          <pre><code>the sum of 10 and 20 is 30</code></pre>
+        </div>
+
+        <div class="explanation">
+          <strong>Explanation:</strong> The makefile defines two compilation steps:
+          <ol>
+            <li><strong>Compile int_add.c to int_add.o:</strong> The <code>-c</code> flag tells gcc to create a <strong>relocatable object file</strong> (.o) without linking. This file contains the compiled code for <code>IntegerAdd()</code> but cannot run on its own.</li>
+            <li><strong>Link p1.c with int_add.o:</strong> When compiling <code>p1.c</code>, the compiler encounters a call to <code>IntegerAdd()</code> which isn't defined in p1.c. It searches through the listed object files (<code>int_add.o</code>) to resolve this external reference.</li>
+          </ol>
+          <p>This separation allows for modular development where different developers can work on separate files, compile them independently, and link them together later.</p>
+        </div>
+      </section>
+
+      <section id="multiple-files">
+        <h2>Working with Multiple Object Files</h2>
+        <p>As programs grow, you'll need to link multiple object files together. The linker searches through all specified .o files to resolve external references.</p>
+
+        <h3>Example 2: Program Using Multiple External Functions</h3>
+
+        <div class="code-block">
+          <div class="code-label">p2.c</div>
+          <pre><code class="language-c">#include &lt;unistd.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;stdio.h&gt;
+
+#include "int_add.h"
+#include "int_sub.h"
+
+int main(int argc, char *argv[])
+{
+    int first_num = 10;
+    int second_num = 20;
+
+    printf("the sum of %d and %d is %d\n",
+            first_num,
+            second_num,
+            IntegerAdd(first_num, second_num));
+
+    printf("the difference between %d and %d is %d\n",
+            first_num,
+            second_num,
+            IntegerSub(first_num, second_num));
+
+    return 0;
+}</code></pre>
+        </div>
+
+        <div class="code-block">
+          <div class="code-label">int_sub.c</div>
+          <pre><code class="language-c">#include &lt;unistd.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;stdio.h&gt;
+
+int IntegerSub(int a, int b)
+{
+    return a - b;
+}</code></pre>
+        </div>
+
+        <div class="code-block">
+          <div class="code-label">Makefile</div>
+          <pre><code class="language-makefile">int_sub.o: int_sub.c int_sub.h
+	$(CC) $(CFLAGS) -c int_sub.c
+
+p2: p2.c int_add.o int_add.h int_sub.o int_sub.h
+	$(CC) $(CFLAGS) -o p2 p2.c int_add.o int_sub.o</code></pre>
+        </div>
+
+        <div class="output-block">
+          <div class="output-label">Output:</div>
+          <pre><code>the sum of 10 and 20 is 30
+the difference between 10 and 20 is -10</code></pre>
+        </div>
+
+        <div class="explanation">
+          <strong>Explanation:</strong> The C compiler compiles <code>p2.c</code> first, then searches through <strong>all</strong> listed object files (<code>int_add.o</code> and <code>int_sub.o</code>) to resolve external references. When it encounters <code>IntegerAdd()</code>, it finds the implementation in <code>int_add.o</code>. When it encounters <code>IntegerSub()</code>, it finds it in <code>int_sub.o</code>. This modular approach allows you to organize code into logical units.
+        </div>
+      </section>
+
+      <section id="libraries">
+        <h2>Building and Using Static Libraries</h2>
+        <p>When working with large projects that have many .o files, specifying each one on the command line becomes tedious. Unix provides the <code>ar</code> (archive) command to bundle multiple object files into a single library file.</p>
+
+        <h3>Example 3: Creating and Using a Static Library</h3>
+
+        <div class="code-block">
+          <div class="code-label">Makefile (creating library)</div>
+          <pre><code class="language-makefile">libmylib.a: int_add.o int_sub.o
+	ar cr libmylib.a int_add.o int_sub.o
+
+p3: p2.c libmylib.a
+	$(CC) $(CFLAGS) -o p3 p2.c libmylib.a</code></pre>
+        </div>
+
+        <div class="explanation">
+          <strong>Explanation:</strong> The <code>ar cr libmylib.a int_add.o int_sub.o</code> command creates a static library called <code>libmylib.a</code> containing both object files. When compiling <code>p3</code>, the linker searches through <code>libmylib.a</code> and extracts only the necessary object files to resolve external references.
+          <p>You can inspect the contents of a library using <code>ar -t libmylib.a</code>, which will show:</p>
+          <pre class="inline-output">int_add.o
+int_sub.o</pre>
+        </div>
+
+        <h3>Example 4: Using Library Search Paths</h3>
+
+        <div class="code-block">
+          <div class="code-label">Makefile (using -L and -l flags)</div>
+          <pre><code class="language-makefile">p4: p2.c libmylib.a
+	$(CC) $(CFLAGS) -o p4 p2.c -L. -lmylib</code></pre>
+        </div>
+
+        <div class="explanation">
+          <strong>Explanation:</strong> Unix follows a naming convention for libraries:
+          <ul>
+            <li><code>-L.</code> tells the linker to look in the current directory (.) for libraries</li>
+            <li><code>-lmylib</code> translates to searching for <code>libmylib.a</code> or <code>libmylib.so</code></li>
+          </ul>
+          <p>The linker automatically adds the "lib" prefix and ".a" or ".so" suffix. This convention allows system libraries like <code>libc</code> to be linked with just <code>-lc</code>.</p>
+          <p>Standard system libraries are located in directories like <code>/usr/lib</code> and are automatically searched by the compiler. You can see what's in a system library using <code>objdump -T /usr/lib/libc.so.6</code>.</p>
+        </div>
+      </section>
+
+      <section id="memory">
+        <h2>Understanding Memory Organization</h2>
+        <p>C programs use three main memory regions: the <strong>stack</strong> (for local variables and function calls), the <strong>heap</strong> (for dynamic allocation), and <strong>global/static memory</strong> (for global variables). Understanding these regions is critical for writing correct C programs.</p>
+
+        <div class="memory-diagram">
+          <table>
+            <thead>
+              <tr>
+                <th>Memory Region</th>
+                <th>Purpose</th>
+                <th>Lifetime</th>
+                <th>Management</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Stack</strong></td>
+                <td>Local variables, function parameters</td>
+                <td>Function scope</td>
+                <td>Automatic (allocated on entry, freed on return)</td>
+              </tr>
+              <tr>
+                <td><strong>Heap</strong></td>
+                <td>Dynamically allocated memory</td>
+                <td>Until explicitly freed</td>
+                <td>Manual (malloc/free)</td>
+              </tr>
+              <tr>
+                <td><strong>Global/Static</strong></td>
+                <td>Global variables, static variables</td>
+                <td>Entire program execution</td>
+                <td>Automatic</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 id="stack-danger">Example 5: The Danger of Returning Stack Addresses</h3>
+
+        <div class="code-block">
+          <div class="code-label">mem3.c (INCORRECT CODE - DO NOT USE)</div>
+          <pre><code class="language-c">#include &lt;unistd.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;stdio.h&gt;
+
+int *foo()
+{
+    int foo_local = 12;
+    return &foo_local;  // DANGER: returning address of local variable!
+}
+
+int *bar()
+{
+    int bar_local = 18;
+    return &bar_local;  // DANGER: returning address of local variable!
+}
+
+void foobar(int *foobar_out)
+{
+    int *foo_ptr;
+    int *bar_ptr;
+
+    foo_ptr = foo();
+    bar_ptr = bar();
+
+    *foobar_out = *foo_ptr + *bar_ptr;  // Undefined behavior!
+
+    return;
+}</code></pre>
+        </div>
+
+        <div class="explanation">
+          <strong>Explanation:</strong> This code contains a critical bug. Here's what goes wrong:
+          <ol>
+            <li><code>foo()</code> creates a local variable <code>foo_local</code> on the stack</li>
+            <li><code>foo()</code> returns the <strong>address</strong> of <code>foo_local</code></li>
+            <li>When <code>foo()</code> returns, its stack frame is deallocated, making <code>foo_local</code> invalid</li>
+            <li>The pointer <code>foo_ptr</code> now points to memory that may be reused by other function calls</li>
+            <li>When <code>bar()</code> is called, it likely reuses the same stack space, overwriting the old data</li>
+            <li>Accessing <code>*foo_ptr</code> leads to <strong>undefined behavior</strong></li>
+          </ol>
+          <p class="warning"><strong>Golden Rule:</strong> Never return the address of a local variable. The memory will be invalid as soon as the function returns.</p>
+        </div>
+
+        <h3 id="heap-correct">Example 6: Correct Way - Returning Heap Memory</h3>
+
+        <div class="code-block">
+          <div class="code-label">mem4.c (CORRECT)</div>
+          <pre><code class="language-c">#include &lt;unistd.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;stdio.h&gt;
+
+int *foo()
+{
+    int *foo_local_ptr;
+    foo_local_ptr = (int *)malloc(sizeof(int));
+    *foo_local_ptr = 12;
+    return foo_local_ptr;  // OK: returning heap address
+}
+
+int *bar()
+{
+    int *bar_local_ptr;
+    bar_local_ptr = (int *)malloc(sizeof(int));
+    *bar_local_ptr = 18;
+    return bar_local_ptr;  // OK: returning heap address
+}
+
+void foobar(int *foobar_out)
+{
+    int *foo_ptr;
+    int *bar_ptr;
+
+    foo_ptr = foo();
+    bar_ptr = bar();
+
+    *foobar_out = *foo_ptr + *bar_ptr;
+    free(foo_ptr);  // Must free heap memory!
+    free(bar_ptr);  // Must free heap memory!
+
+    return;
+}
+
+int main(int argc, char **argv)
+{
+    int foobar_val;
+    foobar(&foobar_val);
+    printf("foobar_val: %d\n", foobar_val);
+    return 0;
+}</code></pre>
+        </div>
+
+        <div class="output-block">
+          <div class="output-label">Output:</div>
+          <pre><code>foobar_val: 30</code></pre>
+        </div>
+
+        <div class="explanation">
+          <strong>Explanation:</strong> This code is correct. Here's why:
+          <ol>
+            <li><code>foo()</code> allocates memory on the <strong>heap</strong> using <code>malloc()</code></li>
+            <li>The heap memory persists even after <code>foo()</code> returns</li>
+            <li>The pointer value (address) is safely passed back to the caller</li>
+            <li><code>foobar()</code> can safely access this memory through the returned pointer</li>
+            <li><strong>Critical:</strong> <code>foobar()</code> must call <code>free()</code> to deallocate the memory, otherwise it will leak</li>
+          </ol>
+          <p class="tip"><strong>Memory Rule:</strong> Heap memory allocated with <code>malloc()</code> persists until you explicitly <code>free()</code> it. Stack memory is automatically deallocated when functions return.</p>
+        </div>
+      </section>
+
+      <section id="parameters">
+        <h2>Function Parameters and Best Practices</h2>
+        <p>Function parameters in C are passed by value, meaning they're copied onto the stack. While you can modify parameters, it's considered poor practice as it can lead to confusion.</p>
+
+        <h3>Example 7: Modifying Parameters (Works but Poor Style)</h3>
+
+        <div class="code-block">
+          <div class="code-label">mem5.c</div>
+          <pre><code class="language-c">#include &lt;unistd.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;stdio.h&gt;
+
+int foo(int a, int b, int c)
+{
+    a = a + 10;  // Modifying parameter - not recommended
+    return a + b + c;
+}
+
+int main(int argc, char **argv)
+{
+    int foo_return;
+    foo_return = foo(100, 101, 102);
+    printf("foo_return: %d\n", foo_return);
+    return 0;
+}</code></pre>
+        </div>
+
+        <div class="output-block">
+          <div class="output-label">Output:</div>
+          <pre><code>foo_return: 313</code></pre>
+        </div>
+
+        <h3>Example 8: Using Local Variables (Better Style)</h3>
+
+        <div class="code-block">
+          <div class="code-label">mem6.c (PREFERRED)</div>
+          <pre><code class="language-c">#include &lt;unistd.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;stdio.h&gt;
+
+int foo(int a, int b, int c)
+{
+    int local_a;
+    local_a = a + 10;  // Use local variable instead
+    return local_a + b + c;
+}
+
+int main(int argc, char **argv)
+{
+    int foo_return;
+    foo_return = foo(100, 101, 102);
+    printf("foo_return: %d\n", foo_return);
+    return 0;
+}</code></pre>
+        </div>
+
+        <div class="output-block">
+          <div class="output-label">Output:</div>
+          <pre><code>foo_return: 313</code></pre>
+        </div>
+
+        <div class="explanation">
+          <strong>Explanation:</strong> Both programs produce the same result, but the second version is clearer:
+          <ul>
+            <li>In the first version, modifying <code>a</code> changes only the local copy (C uses pass-by-value)</li>
+            <li>The second version explicitly creates <code>local_a</code>, making it clear you're working with a modified value</li>
+            <li>This style prevents confusion and makes code more maintainable</li>
+          </ul>
+          <p class="tip"><strong>Style Recommendation:</strong> Treat function parameters as read-only. Create local variables if you need to modify values.</p>
+        </div>
+      </section>
+
+      <section id="memory-layout">
+        <h2>Visualizing Memory Layout</h2>
+        <p>Let's examine the actual memory addresses of variables in different regions to understand the memory layout.</p>
+
+        <h3>Example 9: Printing Memory Addresses</h3>
+
+        <div class="code-block">
+          <div class="code-label">mem7.c</div>
+          <pre><code class="language-c">#include &lt;unistd.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;stdio.h&gt;
+
+int A;  // Global variable
+
+void foo(int *param_a)
+{
+    int *local_p;
+    local_p = (int *)malloc(sizeof(int));
+
+    printf("address of local variable from main(): %p\n", param_a);
+    printf("address of the first parameter in foo(): %p\n", &param_a);
+    printf("address of local variable in foo(): %p\n", &local_p);
+    printf("address of variable on the heap: %p\n", local_p);
+    printf("address of global variable: %p\n", &A);
+
+    free(local_p);
+    return;
+}
+
+int main(int argc, char **argv)
+{
+    int main_a;
+    foo(&main_a);
+    return 0;
+}</code></pre>
+        </div>
+
+        <div class="output-block">
+          <div class="output-label">Output (Linux):</div>
+          <pre><code>address of local variable from main(): 0x7fffcf90c3ec
+address of the first parameter in foo(): 0x7fffcf90c3a8
+address of local variable in foo(): 0x7fffcf90c3b8
+address of variable on the heap: 0x372702a0
+address of global variable: 0x404020</code></pre>
+        </div>
+
+        <div class="explanation">
+          <strong>Explanation:</strong> This program reveals the memory layout:
+          <table class="memory-layout">
+            <thead>
+              <tr>
+                <th>Variable</th>
+                <th>Region</th>
+                <th>Address Range</th>
+                <th>Observations</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Global variable (<code>A</code>)</td>
+                <td>Global/Static</td>
+                <td>0x404020</td>
+                <td>Lowest addresses</td>
+              </tr>
+              <tr>
+                <td>Heap allocation</td>
+                <td>Heap</td>
+                <td>0x372702a0</td>
+                <td>Low addresses, but higher than globals</td>
+              </tr>
+              <tr>
+                <td>Stack variables</td>
+                <td>Stack</td>
+                <td>0x7fff...</td>
+                <td>Very high addresses</td>
+              </tr>
+            </tbody>
+          </table>
+          <p><strong>Key Observations:</strong></p>
+          <ul>
+            <li>Stack addresses (0x7fff...) are much higher than heap (0x3727...) and global (0x4040...) addresses</li>
+            <li>Stack variables in <code>main()</code> and <code>foo()</code> have similar addresses because they're on the same stack</li>
+            <li>The parameter <code>param_a</code> is also on the stack, just like local variables</li>
+            <li>Each function call creates a new "stack frame" with its own local variables</li>
+          </ul>
+          <p class="note"><strong>Platform Note:</strong> Memory layouts vary by operating system. Modern macOS uses different address schemes, but the principle remains: stack, heap, and globals occupy distinct memory regions.</p>
+        </div>
+      </section>
+
+      <section id="takeaways" class="summary-section">
+        <h2>Key Takeaways</h2>
+        <div class="takeaway-grid">
+          <div class="takeaway-card">
+            <h3>📦 Compilation & Linking</h3>
+            <ul>
+              <li>Compile sources to <code>.o</code> files with <code>gcc -c</code></li>
+              <li>Link object files to resolve external references</li>
+              <li>Use makefiles to manage dependencies</li>
+              <li>Bundle .o files into libraries with <code>ar</code></li>
+            </ul>
+          </div>
+          <div class="takeaway-card">
+            <h3>🗂️ Memory Management</h3>
+            <ul>
+              <li><strong>Stack:</strong> automatic, function-scoped</li>
+              <li><strong>Heap:</strong> manual, use malloc/free</li>
+              <li><strong>Globals:</strong> program-lifetime</li>
+              <li>Never return addresses of stack variables</li>
+            </ul>
+          </div>
+          <div class="takeaway-card">
+            <h3>✅ Best Practices</h3>
+            <ul>
+              <li>Always <code>free()</code> malloc'd memory</li>
+              <li>Treat function parameters as read-only</li>
+              <li>Use libraries for code organization</li>
+              <li>Understand the scope and lifetime of variables</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+      </div>
+    </main>
+
+    <footer class="page-footer">
+      <div class="container">
+        <p><strong>Sources:</strong> Content adapted from <a href="https://sites.cs.ucsb.edu/~rich/class/cs170/notes/C/index.html" target="_blank">UCSB CS170 C Lecture Notes</a> by Rich Wolski</p>
+      </div>
+    </footer>
+
+    <script src="script.js"></script>
+  </body>
+</html>
+
+
