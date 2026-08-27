@@ -246,12 +246,16 @@
         else if (e.key === "Escape") closeLightbox();
     });
 
-    const SWIPE_THRESHOLD = 50;
+    const SWIPE_THRESHOLD = 40;
+    const TAP_THRESHOLD = 10;
     let touchStartX = null;
     let touchStartY = null;
 
     lightbox.addEventListener("touchstart", function (e) {
-        if (e.touches.length !== 1) return;
+        if (e.touches.length !== 1 || e.target.closest(".lightbox-nav")) {
+            touchStartX = null;
+            return;
+        }
         touchStartX = e.touches[0].clientX;
         touchStartY = e.touches[0].clientY;
     }, { passive: true });
@@ -265,8 +269,16 @@
         touchStartY = null;
 
         if (Math.abs(deltaX) > SWIPE_THRESHOLD && Math.abs(deltaX) > Math.abs(deltaY)) {
+            // horizontal swipe: navigate, and swallow the follow-up
+            // synthetic click so it doesn't also close the lightbox
+            e.preventDefault();
             if (deltaX < 0) showAt(currentIndex + 1);
             else showAt(currentIndex - 1);
+        } else if (Math.abs(deltaX) < TAP_THRESHOLD && Math.abs(deltaY) < TAP_THRESHOLD) {
+            // tap: close directly instead of relying on the synthetic click,
+            // which iOS Safari doesn't reliably fire after touch handling
+            e.preventDefault();
+            closeLightbox();
         }
     });
 </script>
