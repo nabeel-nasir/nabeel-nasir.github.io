@@ -33,6 +33,13 @@
         flex-direction: column;
         align-items: center;
         justify-content: center;
+        touch-action: none;
+        overscroll-behavior: contain;
+      }
+      body.lightbox-open {
+        overflow: hidden;
+        position: fixed;
+        width: 100%;
       }
       #lightbox.open {
         display: flex;
@@ -41,6 +48,7 @@
         max-width: 90%;
         max-height: 80vh;
         -webkit-user-drag: none;
+        touch-action: none;
       }
       .lightbox-nav {
         position: fixed;
@@ -174,6 +182,7 @@
     const lightboxNext = document.getElementById("lightbox-next");
 
     let currentIndex = -1;
+    let scrollY = 0;
 
     function captionFor(filename) {
         const meta = (typeof photoManifest !== "undefined") && photoManifest[filename];
@@ -183,17 +192,27 @@
     }
 
     function showAt(index) {
+        const wasOpen = lightbox.classList.contains("open");
         currentIndex = (index + photos.length) % photos.length;
         const filename = photos[currentIndex];
         lightboxImg.src = "images/photography/" + filename;
         lightboxCaption.textContent = captionFor(filename);
-        lightbox.classList.add("open");
+
+        if (!wasOpen) {
+            scrollY = window.scrollY;
+            document.body.style.top = -scrollY + "px";
+            document.body.classList.add("lightbox-open");
+            lightbox.classList.add("open");
+        }
     }
 
     function closeLightbox() {
         lightbox.classList.remove("open");
         lightboxImg.src = "";
         currentIndex = -1;
+        document.body.classList.remove("lightbox-open");
+        document.body.style.top = "";
+        window.scrollTo(0, scrollY);
     }
 
     photos.forEach(function (filename, index) {
