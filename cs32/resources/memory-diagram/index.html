@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CS 32 - Memory Diagrams</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="page-header">
+      <div class="header-content">
+        <div class="course-badge">CS 32</div>
+        <h1>Drawing Memory Diagrams</h1>
+        <p class="author">by Nabeel Nasir</p>
+      </div>
+    </header>
+
+    <nav class="breadcrumb">
+      <div class="container">
+        <a href="../index.html">Back to Resources</a>
+      </div>
+    </nav>
+
+    <main class="container">
+      <aside class="table-of-contents">
+        <h3>Contents</h3>
+        <nav>
+          <ul>
+            <li><a href="#guidelines">Guidelines</a></li>
+            <li><a href="#example">Example</a></li>
+          </ul>
+        </nav>
+      </aside>
+
+      <div class="main-content">
+      <section id="guidelines">
+        <h2>Guidelines</h2>
+        <p>When drawing memory diagrams for code execution snapshots, follow these visual conventions:</p>
+        <ol>
+          <li><strong>Stack Frames:</strong> Each active function call gets its own labeled stack frame box (e.g., <code>main</code> stack frame, <code>process</code> stack frame). Function parameters (such as <code>arrPtr</code> for <code>process()</code>) are drawn inside the stack frame of the function they belong to.</li>
+          <li><strong>Objects &amp; Struct Variables:</strong> Objects and struct variables are represented as boxes containing each of their individual member variables inside (e.g., <code>data</code>, <code>next</code>).</li>
+          <li><strong>Heap Allocations:</strong> Objects created dynamically using <code>new</code> appear in the Heap as unnamed boxes (since dynamic heap allocations do not have variable names).</li>
+          <li><strong>Pointers &amp; Pointer Relationships:</strong> Pointer relationships are represented as arrows originating from inside the pointer's box and pointing directly to the target object, array, or element.</li>
+          <li><strong>Arrays:</strong> Arrays are drawn as contiguous boxes with their index numbers (<code>0</code>, <code>1</code>, <code>2</code>) labeled above each element cell.</li>
+        </ol>
+      </section>
+
+      <section id="example">
+        <h2>Example</h2>
+        <p>Draw the memory diagram for the following program at the point marked <code>SNAPSHOT HERE</code>.</p>
+
+        <div class="code-block">
+          <div class="code-label">example.cpp</div>
+          <pre><code class="language-cpp">#include &lt;iostream&gt;
+
+struct Node {
+    int data;
+    Node* next;
+};
+
+void process(int* arrPtr) {
+    Node* myNode = new Node;
+    myNode-&gt;data = arrPtr[1];
+    myNode-&gt;next = nullptr;
+
+    // --- SNAPSHOT HERE ---
+}
+
+int main() {
+    int scores[3] = { 95, 88, 72 };
+    process(scores);
+    return 0;
+}</code></pre>
+        </div>
+
+        <h3>Memory Diagram</h3>
+        <figure class="diagram">
+          <img src="memory-diagram-example.png" alt="Memory diagram with main and process stack frames on the stack and an unnamed Node on the heap" />
+        </figure>
+
+        <h3>Annotated Memory Diagram</h3>
+        <figure class="diagram">
+          <img src="memory-diagram-example-annotated.png" alt="The same memory diagram annotated to show which guideline each part follows" />
+        </figure>
+      </section>
+      </div>
+    </main>
+
+    <script src="script.js"></script>
+  </body>
+</html>
