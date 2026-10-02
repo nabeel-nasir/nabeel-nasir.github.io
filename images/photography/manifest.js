@@ -184,5 +184,25 @@ const photoManifest = {
     "month": "February",
     "year": 2020,
     "location": "Charlottesville, Virginia"
+  },
+  "IMG_4043.jpg": {
+    "month": "August",
+    "year": 2026,
+    "location": "Peerumade, Kerala"
+  },
+  "IMG_4078.jpg": {
+    "month": "August",
+    "year": 2026,
+    "location": "Peerumade, Kerala"
+  },
+  "IMG_4186.jpg": {
+    "month": "September",
+    "year": 2026,
+    "location": "Peerumade, Kerala"
+  },
+  "IMG_4227.jpg": {
+    "month": "September",
+    "year": 2026,
+    "location": "Peerumade, Kerala"
   }
 };
