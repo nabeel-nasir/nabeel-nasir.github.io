@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CS 176A - Debugging Python in VS Code</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="page-header">
+      <div class="header-content">
+        <div class="course-badge">CS 176A</div>
+        <h1>Debugging Python Networking Code in VS Code</h1>
+        <p class="author">by Nabeel Nasir</p>
+      </div>
+    </header>
+
+    <nav class="breadcrumb">
+      <div class="container">
+        <a href="../index.html">Back to Resources</a>
+      </div>
+    </nav>
+
+    <main class="container">
+      <aside class="table-of-contents">
+        <h3>Contents</h3>
+        <nav>
+          <ul>
+            <li><a href="#intro">Before you start</a></li>
+            <li><a href="#gdb">If you know gdb</a></li>
+            <li><a href="#setup">1. Start the server</a></li>
+            <li><a href="#breakpoint">2. Set a breakpoint</a></li>
+            <li><a href="#run">3. Run with arguments</a></li>
+            <li><a href="#screen">4. The debugger screen</a></li>
+            <li><a href="#step">5. Step and inspect</a></li>
+            <li><a href="#exception">6. When it crashes</a></li>
+            <li><a href="#console">7. Debug Console</a></li>
+            <li><a href="#stuck">8. When it hangs</a></li>
+            <li><a href="#server">Debugging a server</a></li>
+            <li><a href="#paths">Files, paths, and stdin</a></li>
+            <li><a href="#pdb">Prefer a terminal? pdb</a></li>
+            <li><a href="#tips">Tips</a></li>
+          </ul>
+        </nav>
+      </aside>
+
+      <div class="main-content">
+      <section id="intro" class="intro-section">
+        <h2>Before you start</h2>
+        <p>
+          This guide shows how to use the VS Code debugger in the PrairieLearn workspace, the same
+          environment you use in the lab exams. It is written for people who have used
+          <code>gdb</code> but not a visual debugger: every step says what the gdb equivalent is.
+        </p>
+        <p>
+          The example is the <strong>Lab Exam Practice</strong> Part 1: <code>echo_client.py</code>, which
+          takes command-line arguments, and <code>echo_server.py</code>.
+        </p>
+        <div class="warning">
+          <strong>Spoiler:</strong> this walkthrough finds some of the bugs in the practice exam's
+          <code>echo_client.py</code>. Try the practice exam yourself first, then come back here.
+        </div>
+        <div class="note">
+          There is no internet access during the lab exam, so read this before your exam slot.
+        </div>
+      </section>
+
+      <section id="gdb">
+        <h2>If you know gdb</h2>
+        <p>Everything you did in gdb has a button, a panel, or a key in VS Code:</p>
+        <table class="gdb-table">
+          <thead>
+            <tr><th>gdb</th><th>VS Code</th><th>Key</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>break 19</code></td><td>Click just left of the line number 19 (a red dot appears)</td><td><kbd>F9</kbd></td></tr>
+            <tr><td><code>run 127.0.0.1 5000 "hello world"</code></td><td><strong>Run and Debug</strong> &rarr; <strong>Python Debugger</strong> &rarr; <strong>Python File with Arguments</strong>, then type the arguments</td><td><kbd>F5</kbd></td></tr>
+            <tr><td><code>next</code></td><td><strong>Step Over</strong></td><td><kbd>F10</kbd></td></tr>
+            <tr><td><code>step</code></td><td><strong>Step Into</strong></td><td><kbd>F11</kbd></td></tr>
+            <tr><td><code>finish</code></td><td><strong>Step Out</strong></td><td><kbd>Shift</kbd>+<kbd>F11</kbd></td></tr>
+            <tr><td><code>continue</code></td><td><strong>Continue</strong></td><td><kbd>F5</kbd></td></tr>
+            <tr><td><code>print port</code>, <code>info locals</code></td><td><strong>Variables</strong> panel, hover over a variable, or type it in the <strong>Debug Console</strong></td><td></td></tr>
+            <tr><td><code>display len(buf)</code></td><td><strong>Watch</strong> panel</td><td></td></tr>
+            <tr><td><code>backtrace</code></td><td><strong>Call Stack</strong> panel</td><td></td></tr>
+            <tr><td><kbd>Ctrl</kbd>+<kbd>C</kbd> (interrupt)</td><td><strong>Pause</strong>, but it can't stop a program blocked in <code>recv()</code> (<a href="#stuck">see below</a>)</td><td><kbd>F6</kbd></td></tr>
+            <tr><td><code>kill</code> / <code>quit</code></td><td><strong>Stop</strong></td><td><kbd>Shift</kbd>+<kbd>F5</kbd></td></tr>
+          </tbody>
+        </table>
+        <div class="tip">
+          On a Mac laptop, function keys may need <kbd>fn</kbd> (for example <kbd>fn</kbd>+<kbd>F10</kbd>), and the
+          browser sometimes grabs them. The buttons on the debug toolbar always work.
+        </div>
+      </section>
+
+      <section id="setup">
+        <h2>1. Start the server in a terminal</h2>
+        <p>
+          A client needs a server to talk to. Open a terminal (<strong>Terminal &rarr; New Terminal</strong>)
+          and start the server as usual. Leave it running: the debugger will run your client in a
+          <em>separate</em> terminal.
+        </p>
+        <div class="code-block">
+          <div class="code-label">Terminal</div>
+          <pre><code>cd part1
+python3 echo_server.py</code></pre>
+        </div>
+      </section>
+
+      <section id="breakpoint">
+        <h2>2. Set a breakpoint</h2>
+        <p>
+          Open <code>echo_client.py</code> and click in the empty space <strong>just left of line number 19</strong>.
+          A red dot appears: that's a breakpoint (gdb: <code>break 19</code>). Click it again to remove it.
+        </p>
+        <p>
+          Then open the <strong>Run and Debug</strong> view: the play-button-with-a-bug icon in the bar on the far left.
+          Your breakpoints are listed at the bottom.
+        </p>
+        <figure class="diagram">
+          <a href="images/01-breakpoint.png" target="_blank"><img src="images/01-breakpoint.png" alt="VS Code with a red breakpoint dot on line 19 of echo_client.py and the Run and Debug view open" /></a>
+          <figcaption>A breakpoint on line 19, and the Run and Debug view on the left.</figcaption>
+        </figure>
+      </section>
+
+      <section id="run">
+        <h2>3. Run it with command-line arguments</h2>
+        <div class="warning">
+          The debugger runs the file in the <strong>active editor tab</strong>. Click on
+          <code>echo_client.py</code> first, not <code>INSTRUCTIONS.md</code>.
+        </div>
+        <ol>
+          <li>Click <strong>Run and Debug</strong>.</li>
+          <li>Pick <strong>Python Debugger</strong>.</li>
+          <li>Pick <strong>Python File with Arguments</strong>. (Plain <strong>Python File</strong> runs it with no arguments, so <code>sys.argv[1]</code> would crash.)</li>
+        </ol>
+        <figure class="diagram">
+          <a href="images/02-pick-config.png" target="_blank"><img src="images/02-pick-config.png" alt="The Select a debug configuration menu with Python File with Arguments highlighted" /></a>
+          <figcaption>Choose <strong>Python File with Arguments</strong>.</figcaption>
+        </figure>
+        <p>
+          Type the arguments exactly as you would after <code>python3 echo_client.py</code> in a terminal,
+          quotes included, and press <kbd>Enter</kbd>. This is gdb's <code>run 127.0.0.1 5000 "hello world"</code>.
+        </p>
+        <figure class="diagram">
+          <a href="images/03-args-prompt.png" target="_blank"><img src="images/03-args-prompt.png" alt="The Command Line Arguments prompt containing 127.0.0.1 5000 &quot;hello world&quot;" /></a>
+          <figcaption>The arguments prompt.</figcaption>
+        </figure>
+        <div class="note">
+          After the first time, <kbd>F5</kbd> (or the green &#9655; at the top of the Run and Debug view) skips the menus
+          and goes straight to the arguments prompt. The prompt starts empty each time, so keep your
+          arguments somewhere you can copy them from.
+        </div>
+      </section>
+
+      <section id="screen">
+        <h2>4. The debugger screen</h2>
+        <p>The program stops at the breakpoint and the screen changes (click any screenshot to see it full size):</p>
+        <figure class="diagram">
+          <a href="images/04-paused.png" target="_blank"><img src="images/04-paused.png" alt="VS Code paused on line 19, with the Variables, Watch, Call Stack and Breakpoints panels on the left and the debug toolbar at the top" /></a>
+          <figcaption>Paused at the breakpoint on line 19.</figcaption>
+        </figure>
+        <ul>
+          <li>
+            <strong>The yellow line</strong> is the line that will run <em>next</em>; it has not run yet. Same as the
+            line gdb prints when it stops. Here <code>host</code> doesn't exist yet.
+          </li>
+          <li><strong>Variables</strong> (top left): every local variable and its current value (gdb: <code>info locals</code>).</li>
+          <li><strong>Watch</strong>: expressions you want to keep an eye on (gdb: <code>display</code>).</li>
+          <li><strong>Call Stack</strong>: which function called which (gdb: <code>backtrace</code>). <code>&lt;module&gt;</code> means top-level code, outside any function.</li>
+          <li><strong>Breakpoints</strong>: all your breakpoints, plus checkboxes for stopping on exceptions.</li>
+          <li><strong>Terminal</strong> (bottom): a new <em>Python Debug Console</em> terminal runs your program. Its output and errors appear here. Your server is still running in the other terminal (switch with the list on the right of the terminal panel).</li>
+        </ul>
+        <p>The <strong>debug toolbar</strong> floats at the top of the editor:</p>
+        <figure class="diagram toolbar">
+          <img src="images/05-toolbar.png" alt="The debug toolbar: Continue, Step Over, Step Into, Step Out, Restart, Stop" />
+        </figure>
+        <p>
+          From left to right: <strong>Continue</strong> (<code>continue</code>), <strong>Step Over</strong> (<code>next</code>),
+          <strong>Step Into</strong> (<code>step</code>), <strong>Step Out</strong> (<code>finish</code>),
+          <strong>Restart</strong>, and <strong>Stop</strong> (<code>kill</code>). While the program is running,
+          Continue turns into <strong>Pause</strong>.
+        </p>
+      </section>
+
+      <section id="step">
+        <h2>5. Step through and inspect variables</h2>
+        <p>
+          Press <strong>Step Over</strong> three times. Each press runs one line, and the Variables panel
+          updates as variables are created:
+        </p>
+        <figure class="diagram">
+          <a href="images/06-stepped.png" target="_blank"><img src="images/06-stepped.png" alt="Paused on line 24. Variables shows host = '127.0.0.1', message = 'hello world', port = '5000'" /></a>
+          <figcaption>After three steps: <code>port = '5000'</code>.</figcaption>
+        </figure>
+        <p>
+          Look closely at <code>port</code>: it shows <code>'5000'</code> <em>with quotes</em>, so it is a
+          <strong>string</strong>, not the number <code>5000</code>. Everything in <code>sys.argv</code> is a string.
+          You can also hover your mouse over any variable in the code to see its value.
+        </p>
+      </section>
+
+      <section id="exception">
+        <h2>6. When the program crashes</h2>
+        <p>
+          Press <strong>Continue</strong>. Instead of just printing a traceback and exiting, the debugger
+          <strong>stops on the line that raised the exception</strong>, with all the variables still there to
+          inspect. (This is the <strong>Uncaught Exceptions</strong> checkbox in the Breakpoints panel, on by default.)
+        </p>
+        <figure class="diagram">
+          <a href="images/07-exception.png" target="_blank"><img src="images/07-exception.png" alt="Paused on line 25 s.connect((host, port)) with TypeError: 'str' object cannot be interpreted as an integer" /></a>
+          <figcaption><code>s.connect()</code> needs the port as an <code>int</code>.</figcaption>
+        </figure>
+        <p>
+          Press <strong>Stop</strong>, fix the code, and run it again (<kbd>F5</kbd>). The debugger always runs the
+          file as it is saved right now, so there's nothing to recompile.
+        </p>
+      </section>
+
+      <section id="console">
+        <h2>7. The Debug Console: run any expression</h2>
+        <p>
+          While paused, click the <strong>Debug Console</strong> tab at the bottom and type any Python expression.
+          It runs in the paused program, with its variables (gdb: <code>print type(port)</code>, but any Python works,
+          including function calls).
+        </p>
+        <figure class="diagram">
+          <a href="images/08-debug-console.png" target="_blank"><img src="images/08-debug-console.png" alt="Debug Console showing type(port) is class str and int(port) + 1 is 5001" /></a>
+          <figcaption>Trying out a fix in the Debug Console before changing the code.</figcaption>
+        </figure>
+        <p>
+          This is a quick way to try a fix (like <code>int(port)</code>) or to check what a value really
+          is (<code>repr(data)</code> shows hidden characters like <code>\r</code> and <code>\n</code>).
+        </p>
+      </section>
+
+      <section id="stuck">
+        <h2>8. When the program hangs</h2>
+        <p>
+          With the port fixed (and <code>message.encode()</code> in <code>send</code>), the client no longer crashes,
+          but it never finishes either. In gdb you would press <kbd>Ctrl</kbd>+<kbd>C</kbd> to see where it is stuck.
+        </p>
+        <div class="warning">
+          <strong>Pause doesn't work while the program is blocked inside <code>recv()</code></strong> (or
+          <code>accept()</code>, or <code>input()</code>). The Python debugger can only stop between Python lines,
+          and a blocked <code>recv()</code> never returns to Python. The Call Stack just keeps saying
+          <em>Running</em>.
+        </div>
+        <p>
+          Instead, <strong>put a breakpoint on the line before and the line after</strong> the call you suspect.
+          Here: line 31 (the <code>recv()</code>) and line 33 (the line after it). Run again:
+        </p>
+        <figure class="diagram">
+          <a href="images/09-at-recv.png" target="_blank"><img src="images/09-at-recv.png" alt="Paused on line 31, reply = s.recv(BUFFER_SIZE).decode(), with another breakpoint on line 33" /></a>
+          <figcaption>It reaches line 31&hellip;</figcaption>
+        </figure>
+        <p>
+          It stops on line 31. Press <strong>Continue</strong>, and it <strong>never reaches line 33</strong>:
+          the program is stuck in <code>recv()</code>, waiting for the server to say something. Why isn't the
+          server replying? Look at the server's terminal:
+        </p>
+        <figure class="diagram">
+          <a href="images/10-stuck-server-output.png" target="_blank"><img src="images/10-stuck-server-output.png" alt="Server terminal: received 11 bytes: b'hello world' (no newline yet; still waiting for the rest of the line...)" /></a>
+          <figcaption>&hellip;but the server is waiting too.</figcaption>
+        </figure>
+        <p>
+          Both sides are waiting for each other. The server is still waiting for the end of the line that the
+          protocol says the client must send. This is the most common bug in networking code, and
+          a debugger alone can't find it: you have to look at <strong>both sides</strong> of the connection.
+        </p>
+      </section>
+
+      <section id="server">
+        <h2>Debugging a server</h2>
+        <p>
+          You can run the <em>server</em> under the debugger instead, and use a normal terminal for the client.
+          This is how you would debug Jewel in Project 2.
+        </p>
+        <ol>
+          <li>
+            Open <code>echo_server.py</code> and set a breakpoint after <code>recv()</code>: line 31,
+            <code>buf += chunk</code>.
+          </li>
+          <li>
+            <strong>Run and Debug</strong> &rarr; <strong>Python File with Arguments</strong>, with the port as the
+            argument: <code>5001</code>. (Port 5000 is still taken by the server in your first terminal. Two programs
+            can't listen on the same port.)
+          </li>
+          <li>
+            Open another terminal (the <strong>+</strong> in the terminal panel) and run the client against it:
+            <div class="code-block">
+              <div class="code-label">Terminal</div>
+              <pre><code>cd part1
+python3 echo_client.py 127.0.0.1 5001 "hello world"</code></pre>
+            </div>
+          </li>
+        </ol>
+        <p>
+          The server stops at the breakpoint as soon as the client's bytes arrive. Click the <strong>+</strong> on the
+          <strong>Watch</strong> panel to add expressions that are re-evaluated every time the program stops
+          (gdb: <code>display</code>):
+        </p>
+        <figure class="diagram">
+          <a href="images/11-server-paused.png" target="_blank"><img src="images/11-server-paused.png" alt="Server paused on line 32. Variables: buf = b'hello world', chunk = b'hello world'. Watch: b&quot;\n&quot; in buf = False, len(buf) = 11. Call Stack: handle, main, module" /></a>
+          <figcaption>Exactly what arrived: <code>b'hello world'</code>, and no <code>\n</code>.</figcaption>
+        </figure>
+        <p>
+          Bytes are shown exactly as received, so a missing <code>\n</code> or <code>\r\n</code> is easy to spot.
+          The <strong>Call Stack</strong> now shows <code>handle</code> &larr; <code>main</code> &larr;
+          <code>&lt;module&gt;</code>: click a row to see that function's variables, like gdb's <code>frame</code>.
+        </p>
+      </section>
+
+      <section id="paths">
+        <h2>Files, paths, and stdin</h2>
+        <p>
+          The debugger runs your program <strong>from the workspace folder</strong>, not from the folder the file is in.
+          So any relative path in the arguments needs the folder in front:
+        </p>
+        <table>
+          <thead>
+            <tr><th>In a terminal, inside part1/</th><th>In the arguments prompt</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>python3 jewel.py 9000 www</code></td><td><code>9000 part1/www</code></td></tr>
+            <tr><td><code>python3 smtp_send.py 127.0.0.1 2500 alice@ucsb.edu bob@ucsb.edu "Meeting" &lt; body.txt</code></td><td><code>127.0.0.1 2500 alice@ucsb.edu bob@ucsb.edu "Meeting" &lt; part1/body.txt</code></td></tr>
+          </tbody>
+        </table>
+        <p>
+          As the second row shows, input redirection with <code>&lt;</code> works in the arguments prompt too: the
+          program's <code>sys.stdin</code> reads from the file.
+        </p>
+      </section>
+
+      <section id="pdb">
+        <h2>Prefer a terminal? Python has its own gdb: pdb</h2>
+        <p>If you'd rather stay in the terminal, <code>pdb</code> works almost exactly like gdb:</p>
+        <div class="code-block">
+          <div class="code-label">Terminal</div>
+          <pre><code>python3 -m pdb echo_client.py 127.0.0.1 5000 "hello world"
+(Pdb) b 25        # break at line 25
+(Pdb) c           # continue
+(Pdb) p port      # print
+(Pdb) n           # next
+(Pdb) s           # step
+(Pdb) bt          # backtrace (called "where" in pdb)
+(Pdb) q           # quit</code></pre>
+        </div>
+        <p>
+          It starts paused on the first line, so type <code>c</code> to run to your first breakpoint. Note that pdb reads
+          its commands from stdin, so it can't be combined with <code>&lt; body.txt</code>; use VS Code for those programs.
+        </p>
+      </section>
+
+      <section id="tips">
+        <h2>Tips</h2>
+        <ul>
+          <li><strong>A crash?</strong> Read the traceback first: it gives you the line number. Run under the debugger to see the variables on that line.</li>
+          <li><strong>A hang?</strong> Find out <em>which</em> side is waiting, and for what. Check the other side's terminal, then use breakpoints around <code>recv()</code>.</li>
+          <li><strong>Wrong output?</strong> Breakpoint right after the <code>recv()</code> or just before the <code>sendall()</code> and look at the exact bytes.</li>
+          <li><strong><code>print()</code> is fine too.</strong> For a quick look, <code>print(repr(data))</code> is often faster than a breakpoint. Use the debugger when you need to look at many values, or don't know where to look yet.</li>
+          <li><strong>"Address already in use"</strong> means another copy of your server is still running, maybe an old debug session. Stop it (the Stop button, or <kbd>Ctrl</kbd>+<kbd>C</kbd> in its terminal) or use a different port.</li>
+        </ul>
+      </section>
+      </div>
+    </main>
+
+    <script src="script.js"></script>
+  </body>
+</html>
